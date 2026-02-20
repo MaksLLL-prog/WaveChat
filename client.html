@@ -241,7 +241,157 @@ body{background:var(--bg);color:var(--text);font-family:'Manrope',sans-serif;fon
 /* ANIMATIONS */
 @keyframes fadeUp{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
 @keyframes slideIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:translateX(0)}}
-@media(max-width:500px){#sb{display:none}.msg{max-width:85%}}
+/* ═══════════════════════════════════════════════════════
+   MOBILE — full redesign for small screens
+   ═══════════════════════════════════════════════════════ */
+@media(max-width:600px){
+
+  #sb { display:none !important; }
+  #app { flex-direction:column; }
+  #chat { flex:1; min-height:0; padding-bottom:56px; }
+
+  /* Bottom nav */
+  #mobile-nav {
+    display:flex !important;
+    position:fixed; bottom:0; left:0; right:0; z-index:300;
+    background:var(--panel); border-top:1px solid var(--border);
+    height:56px; align-items:stretch;
+  }
+  .mnav-btn {
+    flex:1; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:2px;
+    background:none; border:none; cursor:pointer;
+    color:var(--sub); font-size:.6rem; font-weight:700;
+    text-transform:uppercase; letter-spacing:.06em;
+    transition:color .15s; position:relative;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .mnav-btn .micon { font-size:1.3rem; line-height:1; }
+  .mnav-btn.active { color:var(--accent); }
+  .mnav-btn .mbadge {
+    position:absolute; top:6px; right:calc(50% - 14px);
+    background:var(--red); color:#fff; border-radius:10px;
+    padding:1px 5px; font-size:.58rem; font-weight:800;
+    min-width:16px; text-align:center;
+  }
+
+  /* Panels */
+  #mobile-chat-panel,
+  #mobile-contacts-panel {
+    position:fixed; inset:0; bottom:56px;
+    background:var(--bg);
+    transition:transform .28s cubic-bezier(.4,0,.2,1);
+    display:flex; flex-direction:column; z-index:200;
+  }
+  #mobile-chat-panel     { transform:translateX(0); }
+  #mobile-contacts-panel { transform:translateX(100%); }
+  #mobile-chat-panel.hidden      { transform:translateX(-100%); }
+  #mobile-contacts-panel.visible { transform:translateX(0); }
+
+  /* Mobile header */
+  .mob-head {
+    display:flex !important;
+    align-items:center; gap:10px;
+    padding:12px 16px; flex-shrink:0;
+    background:var(--panel); border-bottom:1px solid var(--border);
+  }
+  .mob-head .mh-av {
+    width:36px; height:36px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:.78rem; font-weight:700;
+  }
+  .mob-head .mh-info { flex:1; min-width:0; }
+  .mob-head .mh-title { font-size:1rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mob-head .mh-sub   { font-size:.7rem; color:var(--sub); }
+  .mob-head .mh-call  {
+    background:none; border:none; cursor:pointer; font-size:1.2rem;
+    padding:7px; border-radius:50%; transition:background .15s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .mob-head .mh-call:active { background:rgba(255,255,255,.08); }
+
+  .chat-head { display:none !important; }
+  #dm-banner { display:none !important; }
+
+  #messages { padding:10px 12px; }
+  .msg { max-width:82%; }
+  .bubble { font-size:.9rem; }
+
+  #ibar {
+    padding:8px 10px;
+    padding-bottom:calc(8px + env(safe-area-inset-bottom));
+  }
+  #inp { font-size:.95rem; padding:9px 14px; }
+  .ibtn { width:36px; height:36px; font-size:.95rem; }
+
+  /* Contacts panel */
+  .mob-contacts-head {
+    padding:14px 16px 10px; flex-shrink:0;
+    background:var(--panel); border-bottom:1px solid var(--border);
+  }
+  .mob-contacts-head h2 { font-size:1.1rem; font-weight:800; margin-bottom:2px; }
+  .mob-contacts-head p  { font-size:.75rem; color:var(--sub); }
+
+  .mob-section-label {
+    padding:10px 16px 4px;
+    font-size:.63rem; font-weight:700; text-transform:uppercase;
+    letter-spacing:.12em; color:var(--sub);
+  }
+  .mob-contacts-scroll { flex:1; overflow-y:auto; }
+
+  .mob-user-item {
+    display:flex; align-items:center; gap:12px;
+    padding:11px 16px; cursor:pointer; transition:background .12s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .mob-user-item:active { background:var(--hover); }
+
+  .mob-av {
+    width:44px; height:44px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:.82rem; font-weight:800; position:relative;
+  }
+  .mob-av::after {
+    content:''; position:absolute; bottom:1px; right:1px;
+    width:11px; height:11px; border-radius:50%;
+    background:var(--green); border:2px solid var(--bg);
+  }
+  .mob-uname   { font-size:.92rem; font-weight:700; }
+  .mob-ustatus { font-size:.72rem; color:var(--green); margin-top:1px; }
+  .mob-actions { display:flex; gap:6px; margin-left:auto; }
+  .mob-action-btn {
+    width:38px; height:38px; border-radius:50%; border:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; font-size:1rem;
+    -webkit-tap-highlight-color:transparent; transition:filter .15s;
+  }
+  .mob-action-btn:active { filter:brightness(1.3); }
+  .mob-action-btn.chat { background:rgba(74,144,226,.15);  color:var(--accent); }
+  .mob-action-btn.call { background:rgba(52,210,131,.15);  color:var(--green);  }
+
+  .mob-dm-item {
+    display:flex; align-items:center; gap:12px;
+    padding:10px 16px; cursor:pointer; transition:background .12s;
+    -webkit-tap-highlight-color:transparent; position:relative;
+  }
+  .mob-dm-item:active  { background:var(--hover); }
+  .mob-dm-item.act-dm  { background:var(--active); }
+  .mob-dm-badge {
+    margin-left:auto;
+    background:var(--red); color:#fff; border-radius:10px;
+    padding:2px 7px; font-size:.65rem; font-weight:800;
+  }
+
+  .call-card { padding:32px 28px; min-width:unset; width:90vw; }
+  .call-av   { width:72px; height:72px; font-size:1.6rem; }
+  .call-name { font-size:1.15rem; }
+  .card      { padding:32px 24px 28px; }
+}
+
+@media(min-width:601px){
+  #mobile-nav,
+  #mobile-chat-panel,
+  #mobile-contacts-panel { display:none !important; }
+}
 </style>
 </head>
 <body>
@@ -326,6 +476,49 @@ body{background:var(--bg);color:var(--text);font-family:'Manrope',sans-serif;fon
         </button>
       </div>
     </div>
+  </div>
+</div>
+
+
+<!-- ═══ MOBILE UI ═══════════════════════════════════════ -->
+
+<!-- Bottom navigation (mobile only) -->
+<div id="mobile-nav" style="display:none">
+  <button class="mnav-btn active" id="mnav-chat" onclick="mobileTab('chat')">
+    <span class="micon">💬</span>Chat
+  </button>
+  <button class="mnav-btn" id="mnav-contacts" onclick="mobileTab('contacts')">
+    <span class="micon">👥</span>People
+    <span class="mbadge" id="mob-badge" style="display:none">0</span>
+  </button>
+</div>
+
+<!-- Mobile Chat Panel -->
+<div id="mobile-chat-panel">
+  <!-- Dynamic header -->
+  <div class="mob-head" id="mob-chat-head">
+    <div class="mh-av" id="mob-av" style="background:rgba(74,144,226,.15);color:var(--accent)">💬</div>
+    <div class="mh-info">
+      <div class="mh-title" id="mob-title">General Chat</div>
+      <div class="mh-sub"   id="mob-sub">everyone</div>
+    </div>
+    <button class="mh-call" id="mob-call-btn" style="display:none" onclick="startCallCurrent()">📞</button>
+    <button class="mh-call" id="mob-back-btn" style="display:none" onclick="mobileBackToGeneral()">←</button>
+  </div>
+  <!-- Reuse #messages, #typing-bar, #ibar from #chat -->
+</div>
+
+<!-- Mobile Contacts Panel -->
+<div id="mobile-contacts-panel">
+  <div class="mob-contacts-head">
+    <h2>🌊 WaveChat</h2>
+    <p id="mob-me-label">—</p>
+  </div>
+  <div class="mob-contacts-scroll">
+    <div class="mob-section-label">Online</div>
+    <div id="mob-online-list"></div>
+    <div class="mob-section-label">Direct Messages</div>
+    <div id="mob-dm-list"></div>
   </div>
 </div>
 
@@ -917,6 +1110,213 @@ function blobB64(b){return new Promise((r,j)=>{const rd=new FileReader();rd.onlo
 function b64Blob(b64,mime){const bin=atob(b64),arr=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);return new Blob([arr],{type:mime});}
 function dlFile(n,m,d){const a=document.createElement('a');a.href=`data:${m};base64,${d}`;a.download=n;a.click();}
 function lightbox(m,d){const w=window.open('','_blank');w.document.write(`<!DOCTYPE html><html><body style="margin:0;background:#000;display:flex;justify-content:center;align-items:center;min-height:100vh"><img src="data:${m};base64,${d}" style="max-width:100vw;max-height:100vh;object-fit:contain"></body></html>`);}
+
+// ═══════════════════════════════════════════════════════
+// MOBILE UI LOGIC
+// ═══════════════════════════════════════════════════════
+const isMobile = () => window.innerWidth <= 600;
+
+let mobTab = 'chat';          // 'chat' | 'contacts'
+let mobDmPeers = {};          // peerId → peerName (opened DMs)
+let mobTotalUnread = 0;
+
+function mobileTab(tab) {
+  if (!isMobile()) return;
+  mobTab = tab;
+  const chat = document.getElementById('mobile-chat-panel');
+  const cont = document.getElementById('mobile-contacts-panel');
+  document.getElementById('mnav-chat').classList.toggle('active', tab==='chat');
+  document.getElementById('mnav-contacts').classList.toggle('active', tab==='contacts');
+  if (tab === 'chat') {
+    chat.classList.remove('hidden');
+    cont.classList.remove('visible');
+  } else {
+    chat.classList.add('hidden');
+    cont.classList.add('visible');
+    renderMobContacts();
+  }
+}
+
+function mobileBackToGeneral() {
+  openGlobal();
+  updateMobHead();
+}
+
+function startCallCurrent() {
+  if (view !== 'global' && typeof view === 'number') {
+    startCall(view, peerName);
+  }
+}
+
+// Patch openGlobal / openDM to update mobile head
+const _og = openGlobal;
+function openGlobal() {
+  _og();
+  updateMobHead();
+  if (isMobile()) mobileTab('chat');
+}
+
+const _odm = openDM;
+function openDM(peerId, pName) {
+  _odm(peerId, pName);
+  mobDmPeers[peerId] = pName;
+  updateMobHead();
+  renderMobDmList();
+  if (isMobile()) mobileTab('chat');
+}
+
+function updateMobHead() {
+  if (!isMobile()) return;
+  const av    = document.getElementById('mob-av');
+  const title = document.getElementById('mob-title');
+  const sub   = document.getElementById('mob-sub');
+  const callB = document.getElementById('mob-call-btn');
+  const backB = document.getElementById('mob-back-btn');
+  if (view === 'global') {
+    av.style.cssText = 'background:rgba(74,144,226,.15);color:var(--accent)';
+    av.textContent = '💬';
+    title.textContent = 'General Chat';
+    sub.textContent = (allUsers.length + 1) + ' online';
+    callB.style.display = 'none';
+    backB.style.display = 'none';
+  } else {
+    av.style.cssText = `background:${C(view)}22;color:${C(view)}`;
+    av.textContent = ini(peerName);
+    title.textContent = peerName;
+    sub.textContent = '🔒 Private';
+    callB.style.display = 'flex';
+    backB.style.display = 'flex';
+  }
+}
+
+function renderMobContacts() {
+  renderMobOnline();
+  renderMobDmList();
+  const me = document.getElementById('mob-me-label');
+  if (me) me.textContent = 'Logged in as ' + (myName || '—');
+}
+
+function renderMobOnline() {
+  const el = document.getElementById('mob-online-list');
+  if (!el) return;
+  el.innerHTML = '';
+  if (!allUsers.length) {
+    el.innerHTML = '<div style="padding:12px 16px;color:var(--sub);font-size:.83rem">No other users online</div>';
+    return;
+  }
+  allUsers.forEach(u => {
+    const d = document.createElement('div');
+    d.className = 'mob-user-item';
+    d.innerHTML = `
+      <div class="mob-av" style="background:${C(u.id)}22;color:${C(u.id)}">${ini(u.name)}</div>
+      <div>
+        <div class="mob-uname">${esc(u.name)}</div>
+        <div class="mob-ustatus">● online</div>
+      </div>
+      <div class="mob-actions">
+        <button class="mob-action-btn chat" title="Message" onclick="event.stopPropagation();openDM(${u.id},'${esc(u.name)}')">💬</button>
+        <button class="mob-action-btn call" title="Call"    onclick="event.stopPropagation();startCall(${u.id},'${esc(u.name)}')">📞</button>
+      </div>`;
+    el.appendChild(d);
+  });
+}
+
+function renderMobDmList() {
+  const el = document.getElementById('mob-dm-list');
+  if (!el) return;
+  el.innerHTML = '';
+  const peers = Object.entries(mobDmPeers);
+  if (!peers.length) {
+    el.innerHTML = '<div style="padding:10px 16px;color:var(--sub);font-size:.83rem">No conversations yet</div>';
+    return;
+  }
+  peers.forEach(([pid, pname]) => {
+    pid = parseInt(pid);
+    const d = document.createElement('div');
+    d.className = 'mob-dm-item' + (view === pid ? ' act-dm' : '');
+    const u = unread['dm:'+pid] || 0;
+    d.innerHTML = `
+      <div class="mob-av" style="background:${C(pid)}22;color:${C(pid)}">${ini(pname)}</div>
+      <div>
+        <div class="mob-uname">${esc(pname)}</div>
+        <div class="mob-ustatus">tap to open</div>
+      </div>
+      ${u > 0 ? `<span class="mob-dm-badge">${u > 99 ? '99+' : u}</span>` : ''}`;
+    d.addEventListener('click', () => openDM(pid, pname));
+    el.appendChild(d);
+  });
+}
+
+// Patch incUnread to update mobile badge
+const _incUnread = incUnread;
+function incUnread(key) {
+  _incUnread(key);
+  updateMobBadge();
+  if (key.startsWith('dm:')) {
+    const pid = parseInt(key.slice(3));
+    if (!mobDmPeers[pid]) {
+      const u = allUsers.find(u => u.id === pid);
+      if (u) { mobDmPeers[pid] = u.name; renderMobDmList(); }
+    }
+  }
+}
+const _clearUnread = clearUnread;
+function clearUnread(key) {
+  _clearUnread(key);
+  updateMobBadge();
+}
+function updateMobBadge() {
+  const total = Object.values(unread).reduce((a,b)=>a+(b||0),0);
+  const badge = document.getElementById('mob-badge');
+  if (!badge) return;
+  if (total > 0) { badge.style.display=''; badge.textContent=total>99?'99+':total; }
+  else { badge.style.display='none'; }
+}
+
+// Init mobile panels after login
+const _origConnect = connect;
+function connect() {
+  _origConnect();
+  // After connect + init, mount chat area into mobile panel
+  setTimeout(mountMobileChat, 800);
+}
+
+function mountMobileChat() {
+  if (!isMobile()) return;
+  const mcp = document.getElementById('mobile-chat-panel');
+  const head = document.getElementById('mob-chat-head');
+  // Move #messages, typing-bar, #ibar into mobile panel
+  const msgs  = document.getElementById('messages');
+  const tbar  = document.getElementById('typing-bar');
+  const ibar  = document.getElementById('ibar');
+  if (msgs && !mcp.contains(msgs)) {
+    mcp.appendChild(msgs);
+    mcp.appendChild(tbar);
+    mcp.appendChild(ibar);
+  }
+  updateMobHead();
+}
+
+// Patch onUsers to refresh mobile contacts
+const _onUsers = onUsers;
+function onUsers(msg) {
+  _onUsers(msg);
+  if (isMobile()) {
+    updateMobHead();
+    if (mobTab === 'contacts') renderMobContacts();
+  }
+}
+
+// Patch onInit to setup mobile
+const _onInit = onInit;
+function onInit(msg) {
+  _onInit(msg);
+  if (isMobile()) {
+    setTimeout(mountMobileChat, 100);
+    document.getElementById('mob-me-label').textContent = 'Logged in as ' + myName;
+  }
+}
+
 </script>
 </body>
 </html>
