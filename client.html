@@ -628,11 +628,15 @@ function onInit(msg){
   globalCache=[];
   msg.history.forEach(m=>{globalCache.push(m);renderMsg(m,true);});
   scrollBot(); renderOnline();
+  // mobile
+  if(isMobile()){setTimeout(mountMobileChat,100);const ml=document.getElementById('mob-me-label');if(ml)ml.textContent='Logged in as '+myName;}
 }
 function onUsers(msg){
   allUsers=msg.users.filter(u=>u.id!==myId);
   $('oncount').textContent=allUsers.length;
   renderOnline(); updateHead();
+  // mobile
+  if(isMobile()){updateMobHead();if(mobTab==='contacts')renderMobContacts();}
 }
 function renderOnline(){
   const el=$('online-list');el.innerHTML='';
@@ -752,6 +756,7 @@ function openGlobal(){
   clearMsgs();lastDate='';lastSender=null;
   globalCache.forEach(m=>renderMsg(m,true));
   scrollBot();updateHead();hideDmBanner();activateNav(null);
+  if(isMobile()){updateMobHead();mobileTab('chat');}
 }
 function openDM(peerId,pName){
   view=peerId;peerName=pName;targetUser=null;clearTargetUI();
@@ -760,6 +765,8 @@ function openDM(peerId,pName){
   ensureDmNav(peerId,pName);activateNav(peerId);
   if(dmCache[peerId]){dmCache[peerId].forEach(m=>renderMsg(m,true));scrollBot();}
   else wsSend({type:'dm_history',peer_id:peerId});
+  // mobile
+  mobDmPeers[peerId]=pName;updateMobHead();renderMobDmList();if(isMobile())mobileTab('chat');
 }
 function ensureDmNav(pid,pname){
   if($('dn-'+pid))return;
@@ -802,15 +809,20 @@ function hideDmBanner(){$('dm-banner').classList.remove('show');}
 function incUnread(key){
   unread[key]=(unread[key]||0)+1;
   if(key.startsWith('dm:')){
-    const pid=parseInt(key.slice(3)),el=$('dn-'+pid);if(!el)return;
-    let b=el.querySelector('.badge');
-    if(!b){b=document.createElement('span');b.className='badge';el.appendChild(b);}
-    b.textContent=unread[key]>99?'99+':unread[key];
+    const pid=parseInt(key.slice(3)),el=$('dn-'+pid);if(el){
+      let b=el.querySelector('.badge');
+      if(!b){b=document.createElement('span');b.className='badge';el.appendChild(b);}
+      b.textContent=unread[key]>99?'99+':unread[key];
+    }
+    // mobile: track DM peer
+    if(!mobDmPeers[pid]){const u=allUsers.find(u=>u.id===pid);if(u){mobDmPeers[pid]=u.name;renderMobDmList();}}
   }
+  updateMobBadge();
 }
 function clearUnread(key){
   unread[key]=0;
-  if(key.startsWith('dm:')){const pid=parseInt(key.slice(3)),el=$('dn-'+pid);if(!el)return;el.querySelector('.badge')?.remove();}
+  if(key.startsWith('dm:')){const pid=parseInt(key.slice(3)),el=$('dn-'+pid);if(el)el.querySelector('.badge')?.remove();}
+  updateMobBadge();
 }
 
 // ── SEND ──────────────────────────────────────────────
@@ -1148,22 +1160,7 @@ function startCallCurrent() {
   }
 }
 
-// Patch openGlobal / openDM to update mobile head
-const _og = openGlobal;
-function openGlobal() {
-  _og();
-  updateMobHead();
-  if (isMobile()) mobileTab('chat');
-}
-
-const _odm = openDM;
-function openDM(peerId, pName) {
-  _odm(peerId, pName);
-  mobDmPeers[peerId] = pName;
-  updateMobHead();
-  renderMobDmList();
-  if (isMobile()) mobileTab('chat');
-}
+// openGlobal / openDM — mobile hooks injected directly (no override)
 
 function updateMobHead() {
   if (!isMobile()) return;
@@ -1247,24 +1244,7 @@ function renderMobDmList() {
   });
 }
 
-// Patch incUnread to update mobile badge
-const _incUnread = incUnread;
-function incUnread(key) {
-  _incUnread(key);
-  updateMobBadge();
-  if (key.startsWith('dm:')) {
-    const pid = parseInt(key.slice(3));
-    if (!mobDmPeers[pid]) {
-      const u = allUsers.find(u => u.id === pid);
-      if (u) { mobDmPeers[pid] = u.name; renderMobDmList(); }
-    }
-  }
-}
-const _clearUnread = clearUnread;
-function clearUnread(key) {
-  _clearUnread(key);
-  updateMobBadge();
-}
+// incUnread/clearUnread mobile hooks inline
 function updateMobBadge() {
   const total = Object.values(unread).reduce((a,b)=>a+(b||0),0);
   const badge = document.getElementById('mob-badge');
@@ -1273,13 +1253,7 @@ function updateMobBadge() {
   else { badge.style.display='none'; }
 }
 
-// Init mobile panels after login
-const _origConnect = connect;
-function connect() {
-  _origConnect();
-  // After connect + init, mount chat area into mobile panel
-  setTimeout(mountMobileChat, 800);
-}
+// mountMobileChat is called from onInit directly
 
 function mountMobileChat() {
   if (!isMobile()) return;
@@ -1297,25 +1271,7 @@ function mountMobileChat() {
   updateMobHead();
 }
 
-// Patch onUsers to refresh mobile contacts
-const _onUsers = onUsers;
-function onUsers(msg) {
-  _onUsers(msg);
-  if (isMobile()) {
-    updateMobHead();
-    if (mobTab === 'contacts') renderMobContacts();
-  }
-}
-
-// Patch onInit to setup mobile
-const _onInit = onInit;
-function onInit(msg) {
-  _onInit(msg);
-  if (isMobile()) {
-    setTimeout(mountMobileChat, 100);
-    document.getElementById('mob-me-label').textContent = 'Logged in as ' + myName;
-  }
-}
+// onUsers/onInit mobile hooks are inside the main functions directly
 
 </script>
 </body>
