@@ -639,15 +639,21 @@ function setConn(s,l) {
 // ── HANDLER ───────────────────────────────────────────────────────
 function handle(msg) {
   switch(msg.type) {
-    case 'init':       onInit(msg);      break;
-    case 'users':      onUsers(msg);     break;
-    case 'text':       onText(msg);      break;
-    case 'file':       onFile(msg);      break;
-    case 'voice':      onVoice(msg);     break;
-    case 'system':     onSystem(msg);    break;
-    case 'typing':     onTyping(msg);    break;
-    case 'dm_history': onDmHist(msg);    break;
-    case 'error':      sysMsg('⚠️ '+msg.text); break;
+    case 'init':          onInit(msg);            break;
+    case 'users':         onUsers(msg);           break;
+    case 'text':          onText(msg);            break;
+    case 'file':          onFile(msg);            break;
+    case 'voice':         onVoice(msg);           break;
+    case 'system':        onSystem(msg);          break;
+    case 'typing':        onTyping(msg);          break;
+    case 'dm_history':    onDmHist(msg);          break;
+    case 'error':         sysMsg('⚠️ '+msg.text); break;
+    case 'call-offer':
+    case 'call-answer':
+    case 'call-reject':
+    case 'call-end':
+    case 'call-error':
+    case 'ice-candidate': handleCallMsg(msg);     break;
   }
 }
 
@@ -1169,16 +1175,6 @@ function handleCallMsg(msg) {
   else if (msg.type === 'call-error') {
     endCall(false);
     sysMsg('⚠️ ' + msg.text);
-  }
-}
-
-// Patch main handle() to route call messages
-const _origHandle = handle;
-function handle(msg) {
-  if (msg.type && msg.type.startsWith('call-') || msg.type === 'ice-candidate') {
-    handleCallMsg(msg);
-  } else {
-    _origHandle(msg);
   }
 }
 
