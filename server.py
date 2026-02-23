@@ -166,10 +166,62 @@ def db_init():
             public_key  TEXT NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS contacts (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            contact_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(user_id, contact_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS groups (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            name       TEXT    NOT NULL,
+            owner_id   INTEGER NOT NULL REFERENCES users(id),
+            avatar     TEXT,
+            created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS group_members (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            group_id  INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+            user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            role      TEXT    NOT NULL DEFAULT 'member',
+            joined_at TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(group_id, user_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS muted_users (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            muted_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(user_id, muted_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS blocked_users (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            blocked_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(user_id, blocked_id)
+        );
+
         CREATE INDEX IF NOT EXISTS idx_messages_from ON messages(from_id);
         CREATE INDEX IF NOT EXISTS idx_messages_to   ON messages(to_id);
+        CREATE INDEX IF NOT EXISTS idx_contacts_uid  ON contacts(user_id);
+        CREATE INDEX IF NOT EXISTS idx_gmembers_gid  ON group_members(group_id);
+        CREATE INDEX IF NOT EXISTS idx_gmembers_uid  ON group_members(user_id);
     """)
     conn.commit()
+
+    # Migrate existing messages table — add group_id if missing
+    try:
+        conn.execute("ALTER TABLE messages ADD COLUMN group_id INTEGER REFERENCES groups(id)")
+        conn.commit()
+    except Exception:
+        pass  # column already exists
+
     return conn
 
 DB = db_init()
@@ -474,6 +526,226 @@ async def api_dm_history(req: web.Request):
     return web.json_response({"messages": messages})
 
 
+
+
+# ── REST: USER SEARCH ───────────────────────────────────────────────────────
+@auth_required
+async def api_user_search(req: web.Request):
+    q = req.rel_url.query.get("q", "").strip()
+    if not q or len(q) < 2:
+        return web.json_response({"users": []})
+    rows = db_exec(
+        "SELECT id, name, avatar, bio FROM users WHERE name LIKE ? OR identifier LIKE ? LIMIT 20",
+        (f"%{q}%", f"%{q}%"), fetchall=True
+    )
+    uid = req["user_id"]
+    result = [{"id": r["id"], "name": r["name"], "avatar": r["avatar"], "bio": r["bio"] or ""} for r in rows if r["id"] != uid]
+    return web.json_response({"users": result})
+
+
+# ── REST: CONTACTS ──────────────────────────────────────────────────────────
+@auth_required
+async def api_contacts_get(req: web.Request):
+    uid = req["user_id"]
+    rows = db_exec(
+        """SELECT u.id, u.name, u.avatar, c.created_at
+           FROM contacts c JOIN users u ON u.id = c.contact_id
+           WHERE c.user_id = ? ORDER BY u.name""",
+        (uid,), fetchall=True
+    )
+    return web.json_response({"contacts": [{"id": r["id"], "name": r["name"], "avatar": r["avatar"]} for r in rows]})
+
+
+@auth_required
+async def api_contacts_add(req: web.Request):
+    uid = req["user_id"]
+    try:
+        body = await req.json()
+    except Exception:
+        raise web.HTTPBadRequest(text="Invalid JSON")
+    contact_id = int(body.get("contact_id", 0))
+    if not contact_id or contact_id == uid:
+        raise web.HTTPBadRequest(text="Invalid contact_id")
+    user = db_exec("SELECT id FROM users WHERE id=?", (contact_id,), fetchone=True)
+    if not user:
+        raise web.HTTPNotFound(text="User not found")
+    db_exec("INSERT OR IGNORE INTO contacts(user_id, contact_id) VALUES(?,?)", (uid, contact_id), commit=True)
+    return web.json_response({"ok": True})
+
+
+@auth_required
+async def api_contacts_remove(req: web.Request):
+    uid = req["user_id"]
+    contact_id = int(req.match_info["contact_id"])
+    db_exec("DELETE FROM contacts WHERE user_id=? AND contact_id=?", (uid, contact_id), commit=True)
+    return web.json_response({"ok": True})
+
+
+# ── REST: GROUPS ────────────────────────────────────────────────────────────
+@auth_required
+async def api_groups_list(req: web.Request):
+    uid = req["user_id"]
+    rows = db_exec(
+        """SELECT g.id, g.name, g.owner_id, g.avatar,
+                  gm.role,
+                  (SELECT COUNT(*) FROM group_members WHERE group_id=g.id) as member_count
+           FROM groups g JOIN group_members gm ON gm.group_id=g.id AND gm.user_id=?
+           ORDER BY g.name""",
+        (uid,), fetchall=True
+    )
+    result = []
+    for r in rows:
+        members = db_exec(
+            "SELECT u.id, u.name, u.avatar, gm.role FROM group_members gm JOIN users u ON u.id=gm.user_id WHERE gm.group_id=?",
+            (r["id"],), fetchall=True
+        )
+        result.append({
+            "id": r["id"], "name": r["name"], "owner_id": r["owner_id"],
+            "avatar": r["avatar"], "role": r["role"], "member_count": r["member_count"],
+            "members": [{"id": m["id"], "name": m["name"], "avatar": m["avatar"], "role": m["role"]} for m in members]
+        })
+    return web.json_response({"groups": result})
+
+
+@auth_required
+async def api_groups_create(req: web.Request):
+    uid = req["user_id"]
+    try:
+        body = await req.json()
+    except Exception:
+        raise web.HTTPBadRequest(text="Invalid JSON")
+    name = (body.get("name") or "").strip()[:64]
+    member_ids = [int(x) for x in (body.get("members") or []) if x != uid]
+    if not name:
+        raise web.HTTPBadRequest(text="Group name required")
+    with db_lock:
+        cur = DB.execute("INSERT INTO groups(name, owner_id) VALUES(?,?)", (name, uid))
+        gid = cur.lastrowid
+        DB.execute("INSERT INTO group_members(group_id, user_id, role) VALUES(?,?,?)", (gid, uid, "admin"))
+        for mid in member_ids:
+            try:
+                DB.execute("INSERT INTO group_members(group_id, user_id, role) VALUES(?,?,?)", (gid, mid, "member"))
+            except Exception:
+                pass
+        DB.commit()
+    log(f"Group created: [{gid}] {name} by [{uid}]")
+    # Notify members online
+    group_data = {"id": gid, "name": name, "owner_id": uid, "avatar": None, "role": "member", "member_count": len(member_ids)+1}
+    asyncio.create_task(_notify_group_members(gid, uid, name, member_ids, group_data))
+    return web.json_response({"ok": True, "id": gid, "name": name})
+
+
+async def _notify_group_members(gid, owner_id, name, member_ids, group_data):
+    for mid in member_ids:
+        ws = ws_by_id(mid)
+        if ws:
+            await snd(ws, {"type": "group_invite", "group": group_data})
+
+
+@auth_required
+async def api_groups_invite(req: web.Request):
+    uid = req["user_id"]
+    gid = int(req.match_info["group_id"])
+    # Check admin/owner
+    mem = db_exec("SELECT role FROM group_members WHERE group_id=? AND user_id=?", (gid, uid), fetchone=True)
+    if not mem or mem["role"] not in ("admin",):
+        raise web.HTTPForbidden(text="Not an admin")
+    try:
+        body = await req.json()
+    except Exception:
+        raise web.HTTPBadRequest(text="Invalid JSON")
+    invite_id = int(body.get("user_id", 0))
+    if not invite_id:
+        raise web.HTTPBadRequest(text="user_id required")
+    db_exec("INSERT OR IGNORE INTO group_members(group_id, user_id, role) VALUES(?,?,?)", (gid, invite_id, "member"), commit=True)
+    g = db_exec("SELECT name, owner_id FROM groups WHERE id=?", (gid,), fetchone=True)
+    if g:
+        ws = ws_by_id(invite_id)
+        if ws:
+            await snd(ws, {"type": "group_invite", "group": {"id": gid, "name": g["name"], "owner_id": g["owner_id"]}})
+    return web.json_response({"ok": True})
+
+
+@auth_required
+async def api_groups_leave(req: web.Request):
+    uid = req["user_id"]
+    gid = int(req.match_info["group_id"])
+    g = db_exec("SELECT owner_id FROM groups WHERE id=?", (gid,), fetchone=True)
+    if not g:
+        raise web.HTTPNotFound()
+    if g["owner_id"] == uid:
+        # Owner deletes group
+        db_exec("DELETE FROM group_members WHERE group_id=?", (gid,), commit=True)
+        db_exec("DELETE FROM groups WHERE id=?", (gid,), commit=True)
+    else:
+        db_exec("DELETE FROM group_members WHERE group_id=? AND user_id=?", (gid, uid), commit=True)
+    return web.json_response({"ok": True})
+
+
+@auth_required
+async def api_groups_history(req: web.Request):
+    uid = req["user_id"]
+    gid = int(req.match_info["group_id"])
+    mem = db_exec("SELECT id FROM group_members WHERE group_id=? AND user_id=?", (gid, uid), fetchone=True)
+    if not mem:
+        raise web.HTTPForbidden()
+    rows = db_exec(
+        """SELECT m.id, m.from_id, m.body, m.type, m.created_at, u.name as from_name
+           FROM messages m JOIN users u ON u.id=m.from_id
+           WHERE m.group_id=? ORDER BY m.created_at ASC LIMIT 200""",
+        (gid,), fetchall=True
+    )
+    msgs = []
+    for r in rows:
+        body = json.loads(r["body"])
+        msgs.append({
+            "id": r["id"], "from_id": r["from_id"], "from_name": r["from_name"],
+            "type": r["type"], "text": body.get("text",""),
+            "ts": r["created_at"][11:16], "iso": r["created_at"],
+            "group_id": gid, "dm": False, "self": r["from_id"]==uid
+        })
+    return web.json_response({"messages": msgs})
+
+
+# ── REST: MUTE & BLOCK ──────────────────────────────────────────────────────
+@auth_required
+async def api_mute_toggle(req: web.Request):
+    uid = req["user_id"]
+    target_id = int(req.match_info["user_id"])
+    existing = db_exec("SELECT id FROM muted_users WHERE user_id=? AND muted_id=?", (uid, target_id), fetchone=True)
+    if existing:
+        db_exec("DELETE FROM muted_users WHERE user_id=? AND muted_id=?", (uid, target_id), commit=True)
+        return web.json_response({"muted": False})
+    else:
+        db_exec("INSERT OR IGNORE INTO muted_users(user_id, muted_id) VALUES(?,?)", (uid, target_id), commit=True)
+        return web.json_response({"muted": True})
+
+
+@auth_required
+async def api_block_toggle(req: web.Request):
+    uid = req["user_id"]
+    target_id = int(req.match_info["user_id"])
+    existing = db_exec("SELECT id FROM blocked_users WHERE user_id=? AND blocked_id=?", (uid, target_id), fetchone=True)
+    if existing:
+        db_exec("DELETE FROM blocked_users WHERE user_id=? AND blocked_id=?", (uid, target_id), commit=True)
+        return web.json_response({"blocked": False})
+    else:
+        db_exec("INSERT OR IGNORE INTO blocked_users(user_id, blocked_id) VALUES(?,?)", (uid, target_id), commit=True)
+        return web.json_response({"blocked": True})
+
+
+@auth_required
+async def api_my_settings(req: web.Request):
+    """Return muted and blocked lists for the current user."""
+    uid = req["user_id"]
+    muted  = db_exec("SELECT muted_id FROM muted_users WHERE user_id=?", (uid,), fetchall=True)
+    blocked = db_exec("SELECT blocked_id FROM blocked_users WHERE user_id=?", (uid,), fetchall=True)
+    return web.json_response({
+        "muted":   [r["muted_id"] for r in muted],
+        "blocked": [r["blocked_id"] for r in blocked]
+    })
+
+
 # ── WEBSOCKET HANDLER ────────────────────────────────────────────────────────
 async def ws_handler(req: web.Request):
     ws = web.WebSocketResponse(heartbeat=30, max_msg_size=(MAX_FILE_MB + 2) * 1024 * 1024)
@@ -559,13 +831,15 @@ async def ws_handler(req: web.Request):
                         commit=True
                     )
 
+                    reply = msg.get("reply")
                     p = {
                         "type": "text", "dm": True,
                         "id": msg_id,
                         "from_id": cid, "from_name": name,
                         "to_id": to_id, "to_name": to_name,
                         "text": text, "ts": t, "iso": i,
-                        "status": "sent"
+                        "status": "sent",
+                        "reply": reply if reply else None
                     }
                     get_dm(cid, to_id).append(p)
 
@@ -589,8 +863,10 @@ async def ws_handler(req: web.Request):
                             "from_name": name
                         }))
                 else:
+                    reply = msg.get("reply")
                     p = {"type": "text", "dm": False, "from_id": cid, "from_name": name,
-                         "text": text, "ts": t, "iso": i}
+                         "text": text, "ts": t, "iso": i,
+                         "reply": reply if reply else None}
                     global_history.append(p)
                     await bcast(p, ex=ws)
                     await snd(ws, {**p, "self": True})
@@ -675,7 +951,43 @@ async def ws_handler(req: web.Request):
                     await bcast(p, ex=ws)
                     await snd(ws, {**p, "self": True})
 
-            # ── DM HISTORY ────────────────────────────────────────────────
+            # ── GROUP MESSAGE ─────────────────────────────────────────────
+            elif mtype == "group_msg":
+                gid = msg.get("group_id")
+                text = (msg.get("text") or "").strip()
+                if not gid or not text or len(text) > 4000:
+                    continue
+                gid = int(gid)
+                # Verify membership
+                mem = db_exec("SELECT id FROM group_members WHERE group_id=? AND user_id=?", (gid, cid), fetchone=True)
+                if not mem:
+                    continue
+                g = db_exec("SELECT name FROM groups WHERE id=?", (gid,), fetchone=True)
+                if not g:
+                    continue
+                msg_id = str(uuid.uuid4())
+                db_exec(
+                    "INSERT INTO messages(id, from_id, group_id, type, body, status) VALUES(?,?,?,?,?,?)",
+                    (msg_id, cid, gid, "text", json.dumps({"text": text}), "sent"),
+                    commit=True
+                )
+                reply = msg.get("reply")
+                p = {
+                    "type": "group_msg", "group_id": gid, "group_name": g["name"],
+                    "id": msg_id, "from_id": cid, "from_name": name,
+                    "text": text, "ts": t, "iso": i,
+                    "reply": reply if reply else None
+                }
+                # Forward to all online group members
+                members = db_exec("SELECT user_id FROM group_members WHERE group_id=?", (gid,), fetchall=True)
+                for m2 in members:
+                    mid2 = m2["user_id"]
+                    mws = ws_by_id(mid2)
+                    if mws and mws != ws:
+                        await snd(mws, p)
+                await snd(ws, {**p, "self": True})
+
+
             elif mtype == "dm_history":
                 peer_id = int(msg.get("peer_id", 0))
                 await snd(ws, {
@@ -694,7 +1006,77 @@ async def ws_handler(req: web.Request):
                 else:
                     await bcast({"type": "typing", "from_id": cid, "from_name": name}, ex=ws)
 
-            # ── WebRTC SIGNALING ──────────────────────────────────────────
+            # ── MSG EDIT ──────────────────────────────────────────────
+            elif mtype == "msg_edit":
+                msg_id = msg.get("msg_id")
+                new_text = (msg.get("text") or "").strip()
+                if not msg_id or not new_text or len(new_text) > 4000:
+                    continue
+                # Verify ownership
+                row2 = db_exec("SELECT from_id, to_id FROM messages WHERE id=?", (msg_id,), fetchone=True)
+                if not row2 or row2["from_id"] != cid:
+                    continue
+                db_exec("UPDATE messages SET body=? WHERE id=?",
+                        (json.dumps({"text": new_text, "edited": True}), msg_id), commit=True)
+                p = {"type": "msg_edit", "msg_id": msg_id, "text": new_text}
+                await snd(ws, p)
+                # Notify recipient if online
+                if row2["to_id"]:
+                    to_ws = ws_by_id(row2["to_id"])
+                    if to_ws:
+                        await snd(to_ws, p)
+
+            # ── MSG DELETE ────────────────────────────────────────────────
+            elif mtype == "msg_delete":
+                msg_id = msg.get("msg_id")
+                if not msg_id:
+                    continue
+                row2 = db_exec("SELECT from_id, to_id FROM messages WHERE id=?", (msg_id,), fetchone=True)
+                if not row2 or row2["from_id"] != cid:
+                    continue
+                db_exec("UPDATE messages SET body=? WHERE id=?",
+                        (json.dumps({"text": "", "deleted": True}), msg_id), commit=True)
+                p = {"type": "msg_delete", "msg_id": msg_id}
+                await snd(ws, p)
+                if row2["to_id"]:
+                    to_ws = ws_by_id(row2["to_id"])
+                    if to_ws:
+                        await snd(to_ws, p)
+
+            # ── REACTION ──────────────────────────────────────────────────
+            elif mtype == "reaction":
+                msg_id = msg.get("msg_id")
+                emoji  = (msg.get("emoji") or "").strip()
+                if not msg_id or not emoji or len(emoji) > 8:
+                    continue
+                # Find who this message was between
+                row2 = db_exec("SELECT from_id, to_id FROM messages WHERE id=?", (msg_id,), fetchone=True)
+                p = {"type": "reaction", "msg_id": msg_id, "emoji": emoji,
+                     "user_id": cid, "user_name": name}
+                await snd(ws, p)
+                if row2 and row2["to_id"]:
+                    other_id = row2["to_id"] if row2["from_id"] == cid else row2["from_id"]
+                    to_ws = ws_by_id(other_id)
+                    if to_ws:
+                        await snd(to_ws, p)
+                elif row2 and not row2["to_id"]:
+                    # Global message — broadcast to all
+                    await bcast(p, ex=ws)
+
+            # ── READ RECEIPT ──────────────────────────────────────────────
+            elif mtype == "read":
+                peer_id = msg.get("peer_id")
+                if peer_id:
+                    peer_id = int(peer_id)
+                    db_exec(
+                        "UPDATE messages SET status='read' WHERE to_id=? AND from_id=? AND status!='read'",
+                        (cid, peer_id), commit=True
+                    )
+                    peer_ws = ws_by_id(peer_id)
+                    if peer_ws:
+                        await snd(peer_ws, {"type": "read", "from_id": cid})
+
+                        # ── WebRTC SIGNALING ──────────────────────────────────────────
             elif mtype == "call-offer":
                 to_id = int(msg.get("to_id", 0))
                 to_ws = ws_by_id(to_id)
@@ -777,12 +1159,25 @@ app.router.add_put("/api/profile",                api_profile_put)
 app.router.add_get("/api/push/key",               api_push_key)
 app.router.add_post("/api/push/subscribe",        api_push_subscribe)
 app.router.add_get("/api/dm-history/{peer_id}",   api_dm_history)
+# v0.2 / v0.3
+app.router.add_get("/api/users/search",           api_user_search)
+app.router.add_get("/api/contacts",               api_contacts_get)
+app.router.add_post("/api/contacts",              api_contacts_add)
+app.router.add_delete("/api/contacts/{contact_id}", api_contacts_remove)
+app.router.add_get("/api/groups",                 api_groups_list)
+app.router.add_post("/api/groups",                api_groups_create)
+app.router.add_post("/api/groups/{group_id}/invite", api_groups_invite)
+app.router.add_delete("/api/groups/{group_id}/leave", api_groups_leave)
+app.router.add_get("/api/groups/{group_id}/history",  api_groups_history)
+app.router.add_post("/api/mute/{user_id}",        api_mute_toggle)
+app.router.add_post("/api/block/{user_id}",       api_block_toggle)
+app.router.add_get("/api/settings",               api_my_settings)
 app.router.add_route("OPTIONS", "/{path_info:.*}", options_handler)
 
 
 if __name__ == "__main__":
     init_vapid()
     push_status = "with push notifications" if (PUSH_AVAILABLE and VAPID_PUBLIC_KEY) else "without push (install pywebpush)"
-    log(f"WaveChat v2.0 | port={PORT} | db={DB_PATH} | {push_status}")
+    log(f"WaveChat v0.3 | port={PORT} | db={DB_PATH} | {push_status}")
     log(f"Secret key (save this!): {SECRET_KEY[:8]}…")
     web.run_app(app, host="0.0.0.0", port=PORT, access_log=None)
