@@ -746,6 +746,56 @@ async def api_my_settings(req: web.Request):
     })
 
 
+# ── LINK PREVIEW (OG scraper) ────────────────────────────────────────────────
+async def api_og(req: web.Request):
+    """Fetch Open Graph metadata for a URL. Returns title, description, image."""
+    url = req.rel_url.query.get("url", "").strip()
+    if not url or not url.startswith(("http://", "https://")):
+        return web.json_response({"error": "bad url"}, status=400)
+    try:
+        import re as _re
+        timeout = aiohttp.ClientTimeout(total=6)
+        headers = {"User-Agent": "WaveChatBot/1.0 (+https://wavechat.app)"}
+        async with aiohttp.ClientSession(timeout=timeout) as sess:
+            async with sess.get(url, headers=headers, allow_redirects=True, max_redirects=5) as resp:
+                if resp.status != 200:
+                    return web.json_response({"error": "fetch failed"}, status=502)
+                ct = resp.headers.get("Content-Type", "")
+                if "text/html" not in ct:
+                    return web.json_response({"error": "not html"}, status=415)
+                html = await resp.text(errors="replace")
+        # Extract OG / meta tags
+        def og(prop):
+            m = _re.search(r'<meta[^>]+property=["\']og:' + prop + r'["\'][^>]+content=["\']([^"\']+)["\']', html, _re.I)
+            if not m:
+                m = _re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:' + prop + r'["\']', html, _re.I)
+            return m.group(1).strip() if m else None
+        def meta(name):
+            m = _re.search(r'<meta[^>]+name=["\']' + name + r'["\'][^>]+content=["\']([^"\']+)["\']', html, _re.I)
+            if not m:
+                m = _re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']' + name + r'["\']', html, _re.I)
+            return m.group(1).strip() if m else None
+        title_m = _re.search(r'<title[^>]*>([^<]+)</title>', html, _re.I)
+        title = og("title") or (title_m.group(1).strip() if title_m else None) or ""
+        description = og("description") or meta("description") or ""
+        image = og("image") or og("image:secure_url") or ""
+        site_name = og("site_name") or ""
+        # Resolve relative image URLs
+        if image and image.startswith("/"):
+            from urllib.parse import urlparse
+            p = urlparse(url)
+            image = f"{p.scheme}://{p.netloc}{image}"
+        return web.json_response({
+            "url": url,
+            "title": title[:120],
+            "description": description[:200],
+            "image": image[:500],
+            "site_name": site_name[:60],
+        })
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=502)
+
+
 # ── WEBSOCKET HANDLER ────────────────────────────────────────────────────────
 async def ws_handler(req: web.Request):
     ws = web.WebSocketResponse(heartbeat=30, max_msg_size=(MAX_FILE_MB + 2) * 1024 * 1024)
@@ -1172,6 +1222,7 @@ app.router.add_get("/api/groups/{group_id}/history",  api_groups_history)
 app.router.add_post("/api/mute/{user_id}",        api_mute_toggle)
 app.router.add_post("/api/block/{user_id}",       api_block_toggle)
 app.router.add_get("/api/settings",               api_my_settings)
+app.router.add_get("/api/og",                     api_og)
 app.router.add_route("OPTIONS", "/{path_info:.*}", options_handler)
 
 

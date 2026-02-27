@@ -217,42 +217,318 @@ body::before{
 *{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.08) transparent}
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px}
 
-.auth-tabs{display:flex;gap:4px;background:rgba(255,255,255,0.06);border-radius:12px;padding:4px;margin-bottom:22px}
-.auth-tab{flex:1;padding:10px;border:none;border-radius:9px;background:transparent;color:var(--sub);font-family:'Sora',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s}
-.auth-tab.active{background:rgba(91,141,238,0.25);color:var(--blue);box-shadow:0 2px 8px rgba(91,141,238,0.2)}
-.auth-tab:hover:not(.active){background:rgba(255,255,255,0.06);color:var(--text)}
-/* Message status indicators */
-.msg-status{font-size:.6rem;margin-left:4px;opacity:0.7;display:inline-block;vertical-align:middle}
-.msg-status.sent{color:rgba(255,255,255,0.5)}
-.msg-status.delivered{color:#5b8dee}
-/* Avatar upload overlay */
-.av-upload-wrap{position:relative;display:inline-block;cursor:pointer}
-.av-upload-wrap:hover .pm-av-overlay{display:flex!important}
-#login{position:fixed;inset:0;z-index:900;display:flex;align-items:center;justify-content:center;transition:opacity .5s,transform .4s}
-#login.out{opacity:0;transform:scale(.94) translateY(-16px);pointer-events:none}
-.lcard{
-  background:rgba(255,255,255,0.07);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);
-  border:1px solid var(--glass-border);border-radius:28px;padding:48px 44px;width:min(420px,93vw);
-  box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,0.1);text-align:center;position:relative;z-index:1;
-  animation:cardIn .6s cubic-bezier(0.16,1,0.3,1);
+
+/* ════════════════════════ AUTH v3 — BLACK / WHITE ════════════════════════ */
+#login{
+  position:fixed;inset:0;z-index:900;
+  display:flex;align-items:stretch;
+  transition:opacity .5s,transform .4s;
+  font-family:'Sora',sans-serif;
 }
-@keyframes cardIn{from{opacity:0;transform:translateY(28px) scale(.96)}to{opacity:1;transform:none}}
-.lcard-icon{
-  width:72px;height:72px;border-radius:22px;background:linear-gradient(135deg,#5b8dee,#8b5cf6);
-  color:#fff;display:inline-flex;align-items:center;justify-content:center;margin-bottom:20px;
-  box-shadow:0 16px 40px rgba(91,141,238,0.4),inset 0 1px 0 rgba(255,255,255,0.25);
-  animation:iconFloat 4s ease-in-out infinite;
+#login.out{opacity:0;transform:scale(.96);pointer-events:none}
+
+/* ══════════════════════════════════════════
+   LEFT PANEL — dark with living background
+══════════════════════════════════════════ */
+.al-left{
+  flex:0 0 48%;
+  background:#070709;
+  display:flex;flex-direction:column;
+  padding:40px 48px;
+  position:relative;overflow:hidden;
 }
-@keyframes iconFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
-.lcard-logo h1{font-size:2rem;font-weight:800;letter-spacing:-1px;margin-bottom:8px;background:linear-gradient(135deg,#fff,rgba(255,255,255,.65));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.lcard-logo p.sub{font-size:.9rem;color:var(--sub);margin-bottom:32px}
-.lf label{display:none}
-.lf input{width:100%;background:rgba(255,255,255,0.07);border:1px solid var(--glass-border);border-radius:14px;padding:15px 20px;font-family:'Sora',sans-serif;font-size:.95rem;color:var(--text);outline:none;transition:.25s;margin-bottom:14px}
-.lf input::placeholder{color:var(--sublight)}
-.lf input:focus{border-color:rgba(91,141,238,0.6);background:rgba(91,141,238,0.08);box-shadow:0 0 0 4px rgba(91,141,238,0.12)}
-.lerr{color:var(--red);font-size:.77rem;margin-bottom:8px;min-height:1em}
-.ljoin{width:100%;padding:16px;border:none;border-radius:14px;background:linear-gradient(135deg,#5b8dee,#7c6dea);color:#fff;font-size:.95rem;font-weight:700;font-family:'Sora',sans-serif;cursor:pointer;box-shadow:0 12px 32px rgba(91,141,238,0.4),inset 0 1px 0 rgba(255,255,255,0.2);transition:.25s}
-.ljoin:hover{transform:translateY(-2px);box-shadow:0 18px 40px rgba(91,141,238,0.5)}
+
+/* Animated gradient blobs */
+.al-blob{
+  position:absolute;border-radius:50%;
+  filter:blur(80px);pointer-events:none;
+  animation:blobFloat linear infinite;
+  opacity:0;
+}
+.al-blob-1{
+  width:420px;height:420px;
+  background:radial-gradient(circle,rgba(91,141,238,0.22),transparent 70%);
+  top:-80px;left:-100px;
+  animation-duration:18s;animation-delay:0s;
+}
+.al-blob-2{
+  width:360px;height:360px;
+  background:radial-gradient(circle,rgba(139,92,246,0.18),transparent 70%);
+  bottom:60px;right:-80px;
+  animation-duration:22s;animation-delay:-8s;
+}
+.al-blob-3{
+  width:280px;height:280px;
+  background:radial-gradient(circle,rgba(52,211,153,0.12),transparent 70%);
+  top:40%;left:30%;
+  animation-duration:26s;animation-delay:-14s;
+}
+@keyframes blobFloat{
+  0%{opacity:0;transform:translate(0,0) scale(1)}
+  8%{opacity:1}
+  50%{transform:translate(30px,-40px) scale(1.08)}
+  92%{opacity:1}
+  100%{opacity:0;transform:translate(0,0) scale(1)}
+}
+
+/* Dot grid overlay */
+.al-left::before{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:0;
+  background-image:radial-gradient(circle,rgba(255,255,255,.055) 1px,transparent 1px);
+  background-size:26px 26px;
+}
+
+/* Canvas for particles */
+#al-canvas{
+  position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.6;
+}
+
+.al-logo{
+  display:flex;align-items:center;gap:10px;
+  color:#fff;font-size:.95rem;font-weight:800;letter-spacing:-.02em;
+  position:relative;z-index:2;
+}
+.al-logo-icon{
+  width:34px;height:34px;background:#fff;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.al-logo-icon svg{color:#0a0a0a;display:block}
+
+.al-body{
+  flex:1;display:flex;flex-direction:column;
+  justify-content:center;padding:32px 0;
+  position:relative;z-index:2;
+}
+.al-pill{
+  display:inline-flex;align-items:center;gap:8px;
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:50px;padding:5px 14px;
+  font-size:.68rem;font-weight:600;color:rgba(255,255,255,.5);
+  margin-bottom:28px;width:fit-content;letter-spacing:.04em;text-transform:uppercase;
+  backdrop-filter:blur(8px);
+  background:rgba(255,255,255,.04);
+}
+.al-pill-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:#4ade80;
+  box-shadow:0 0 8px rgba(74,222,128,.9),0 0 20px rgba(74,222,128,.4);
+  flex-shrink:0;
+  animation:pillPulse 2s ease-in-out infinite;
+}
+@keyframes pillPulse{
+  0%,100%{box-shadow:0 0 8px rgba(74,222,128,.9),0 0 20px rgba(74,222,128,.4)}
+  50%{box-shadow:0 0 12px rgba(74,222,128,1),0 0 30px rgba(74,222,128,.6)}
+}
+.al-h{
+  font-size:3.2rem;font-weight:800;color:#fff;
+  line-height:1.08;letter-spacing:-.06em;margin-bottom:18px;
+}
+.al-h span{color:rgba(255,255,255,.18)}
+.al-p{
+  font-size:.86rem;color:rgba(255,255,255,.35);
+  line-height:1.75;max-width:300px;
+}
+
+/* Animated message bubbles */
+.al-msgs{
+  margin-top:40px;display:flex;flex-direction:column;gap:12px;
+}
+.al-msg{display:flex;align-items:flex-end;gap:9px;opacity:0}
+.al-msg-r{flex-direction:row-reverse}
+.al-msg-av{
+  width:28px;height:28px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.58rem;font-weight:800;flex-shrink:0;
+}
+.al-msg-bbl{
+  padding:8px 13px;border-radius:16px;
+  font-size:.76rem;font-weight:500;line-height:1.4;
+  max-width:230px;
+}
+.al-msg-bbl-w{
+  background:#fff;color:#0a0a0a;
+  border-radius:16px 16px 4px 16px;
+  box-shadow:0 4px 20px rgba(0,0,0,.3);
+}
+.al-msg-bbl-d{
+  background:rgba(255,255,255,.08);color:rgba(255,255,255,.75);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:16px 16px 16px 4px;
+}
+/* Staggered float-in */
+.al-msg:nth-child(1){animation:msgIn .7s cubic-bezier(.16,1,.3,1) 0.9s forwards}
+.al-msg:nth-child(2){animation:msgIn .7s cubic-bezier(.16,1,.3,1) 1.4s forwards}
+.al-msg:nth-child(3){animation:msgIn .7s cubic-bezier(.16,1,.3,1) 1.9s forwards}
+@keyframes msgIn{
+  from{opacity:0;transform:translateY(14px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+.al-footer{
+  font-size:.68rem;color:rgba(255,255,255,.16);
+  position:relative;z-index:2;
+}
+
+/* ══════════════════════════════════════════
+   RIGHT PANEL — clean white form
+══════════════════════════════════════════ */
+.al-right{
+  flex:1;background:#fff;
+  display:flex;align-items:center;justify-content:center;
+  padding:48px 56px;overflow-y:auto;
+  position:relative;
+}
+/* Subtle animated grid on white side */
+.al-right::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(0,0,0,.025) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(0,0,0,.025) 1px,transparent 1px);
+  background-size:40px 40px;
+  animation:gridShift 30s linear infinite;
+}
+@keyframes gridShift{
+  0%{background-position:0 0}
+  100%{background-position:40px 40px}
+}
+
+.af-panel{
+  width:100%;max-width:360px;
+  position:relative;z-index:1;
+  animation:afIn .5s cubic-bezier(.16,1,.3,1);
+}
+@keyframes afIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
+.af-title{
+  font-size:1.8rem;font-weight:800;color:#09090b;
+  letter-spacing:-.05em;margin-bottom:6px;
+}
+.af-sub{font-size:.83rem;color:#71717a;margin-bottom:28px;font-weight:400;line-height:1.5}
+
+.af-field{margin-bottom:16px}
+.af-label{
+  display:block;font-size:.73rem;font-weight:700;
+  color:#374151;margin-bottom:6px;letter-spacing:.01em;
+}
+.af-req{color:#ef4444;margin-left:2px}
+.af-pw{position:relative}
+.af-inp{
+  width:100%;padding:12px 15px;
+  background:#f5f5f7;border:1.5px solid transparent;border-radius:11px;
+  font-family:'Sora',sans-serif;font-size:.88rem;color:#09090b;
+  outline:none;transition:.18s;
+}
+.af-pw .af-inp{padding-right:46px}
+.af-inp::placeholder{color:#aaa;font-weight:400}
+.af-inp:focus{
+  border-color:#09090b;background:#fff;
+  box-shadow:0 0 0 4px rgba(9,9,11,.07);
+}
+.af-eye{
+  position:absolute;right:13px;top:50%;transform:translateY(-50%);
+  background:none;border:none;cursor:pointer;color:#bbb;
+  padding:4px;display:flex;align-items:center;transition:.15s;
+}
+.af-eye:hover{color:#09090b}
+.af-hint{font-size:.7rem;color:#b0b0b0;margin-top:5px;display:block}
+.af-err{
+  font-size:.73rem;color:#ef4444;min-height:18px;margin-bottom:8px;
+  display:flex;align-items:center;gap:5px;
+}
+.af-err:not(:empty)::before{content:'⚠';font-size:.7rem}
+
+.af-btn{
+  width:100%;padding:13px;border:none;border-radius:11px;
+  background:#09090b;color:#fff;
+  font-family:'Sora',sans-serif;font-size:.92rem;font-weight:700;
+  cursor:pointer;transition:.2s;margin-bottom:18px;
+  letter-spacing:-.01em;
+  position:relative;overflow:hidden;
+}
+.af-btn::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,.08),transparent);
+}
+.af-btn:hover{background:#1c1c1c;transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.af-btn:active{transform:none;box-shadow:none}
+.af-btn:disabled{opacity:.55;pointer-events:none}
+
+.af-switch{font-size:.81rem;color:#71717a;text-align:center}
+.af-switch a{color:#09090b;font-weight:700;text-decoration:none;border-bottom:1.5px solid transparent;transition:.15s}
+.af-switch a:hover{border-bottom-color:#09090b}
+
+/* ── DIVIDER ── */
+.af-divider{
+  display:flex;align-items:center;gap:12px;
+  color:#d4d4d8;font-size:.72rem;margin:18px 0;font-weight:500;
+}
+.af-divider::before,.af-divider::after{content:'';flex:1;height:1px;background:#e5e7eb}
+
+/* ── SOCIAL LOGINS ── */
+.af-socials{display:flex;gap:8px;margin-bottom:20px}
+.af-soc-btn{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:10px 14px;border-radius:10px;
+  border:1.5px solid #e5e7eb;background:#fff;
+  font-family:'Sora',sans-serif;font-size:.76rem;font-weight:600;color:#374151;
+  cursor:pointer;transition:.18s;
+}
+.af-soc-btn:hover{border-color:#09090b;background:#fafafa}
+.af-soc-btn svg{flex-shrink:0}
+
+/* ── PASSWORD STRENGTH ── */
+.af-pw-strength{display:flex;gap:4px;margin-top:7px}
+.af-ps-bar{flex:1;height:3px;border-radius:2px;background:#e5e7eb;transition:background .3s}
+.af-ps-bar.weak{background:#ef4444}
+.af-ps-bar.fair{background:#f59e0b}
+.af-ps-bar.good{background:#22c55e}
+
+/* ═══════════════════════════════════
+   MOBILE — full screen dark + card
+═══════════════════════════════════ */
+@media(max-width:768px){
+  #login{flex-direction:column;background:#070709}
+
+  /* Dark panel: shrunk, just logo + tagline */
+  .al-left{
+    flex:none;
+    padding:56px 24px 28px;
+    min-height:220px;
+  }
+  .al-body{padding:16px 0 0}
+  .al-h{font-size:2.4rem;margin-bottom:12px}
+  .al-p{display:block;font-size:.82rem;max-width:100%;opacity:.6}
+  .al-msgs{display:none}
+  .al-footer{display:none}
+
+  /* White panel: no absolute center, just stacks */
+  .al-right{
+    flex:1;
+    padding:28px 22px 40px;
+    align-items:flex-start;
+    border-radius:24px 24px 0 0;
+    background:#fff;
+    margin-top:-20px;
+    overflow-y:auto;
+    position:relative;z-index:3;
+    /* pull handle */
+  }
+  .al-right::after{
+    content:'';display:block;width:40px;height:4px;
+    border-radius:2px;background:rgba(0,0,0,.12);
+    position:absolute;top:10px;left:50%;transform:translateX(-50%);
+  }
+  .af-panel{max-width:100%;animation:afIn .4s cubic-bezier(.16,1,.3,1)}
+  .af-title{font-size:1.5rem}
+  .af-sub{margin-bottom:20px;font-size:.8rem}
+}
+@media(max-width:400px){
+  .al-left{padding:50px 18px 24px;min-height:180px}
+  .al-h{font-size:2rem}
+  .al-right{padding:26px 16px 36px}
+}
+/* ════════════════════════ END AUTH ════════════════════════ */
+
 
 /* ── APP SHELL ───────────────────────────── */
 #app{display:none;flex:1;min-height:0;position:relative;z-index:1}
@@ -1307,34 +1583,112 @@ body.theme-light .help-privacy-block h4{color:#0f1120}
 
 <!-- LOGIN / REGISTER -->
 <div id="login">
-<div class="lcard">
-  <div class="lcard-logo">
-    <div class="lcard-icon">
-      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18s2-3 5-3 4 2 7 2 5-3 5-3"/><path d="M3 12s2-3 5-3 4 2 7 2 5-3 5-3"/><path d="M3 6s2-3 5-3 4 2 7 2 5-3 5-3"/></svg>
+
+<!-- ══ LEFT: DARK + LIVING BACKGROUND ══ -->
+<div class="al-left" id="al-left">
+  <!-- Animated blobs -->
+  <div class="al-blob al-blob-1"></div>
+  <div class="al-blob al-blob-2"></div>
+  <div class="al-blob al-blob-3"></div>
+  <!-- Particle canvas -->
+  <canvas id="al-canvas"></canvas>
+
+  <div class="al-logo">
+    <div class="al-logo-icon">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18s2-3 5-3 4 2 7 2 5-3 5-3"/><path d="M3 12s2-3 5-3 4 2 7 2 5-3 5-3"/><path d="M3 6s2-3 5-3 4 2 7 2 5-3 5-3"/></svg>
     </div>
-    <h1>WaveChat</h1>
-    <p class="sub">Connect with your team, securely. 🔐</p>
+    <span>WaveChat</span>
   </div>
-  <!-- Auth Tabs -->
-  <div class="auth-tabs">
-    <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Sign In</button>
-    <button class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Create Account</button>
+
+  <div class="al-body">
+    <div class="al-pill">
+      <span class="al-pill-dot"></span> Secure messaging
+    </div>
+    <h2 class="al-h">Talk.<br>Share.<br><span>Connect.</span></h2>
+    <p class="al-p">Real-time messaging, file sharing, voice notes and calls — everything your team needs.</p>
+
+    <div class="al-msgs">
+      <div class="al-msg al-msg-r">
+        <div class="al-msg-bbl al-msg-bbl-w">Hey, just pushed the update 🚀</div>
+        <div class="al-msg-av" style="background:#fff;color:#000">A</div>
+      </div>
+      <div class="al-msg al-msg-l">
+        <div class="al-msg-av" style="background:#1e1e1e;color:#fff;border:1px solid rgba(255,255,255,.1)">M</div>
+        <div class="al-msg-bbl al-msg-bbl-d">Looks 🔥 shipping now!</div>
+      </div>
+      <div class="al-msg al-msg-r">
+        <div class="al-msg-bbl al-msg-bbl-w">v3.0 is live 🎉</div>
+        <div class="al-msg-av" style="background:#fff;color:#000">T</div>
+      </div>
+    </div>
   </div>
-  <!-- Login Form -->
-  <div id="form-login" class="lf">
-    <input id="inp-identifier" placeholder="Email or phone…" maxlength="80" autocomplete="username">
-    <input id="inp-password" type="password" placeholder="Password…" maxlength="128" autocomplete="current-password">
-  </div>
-  <!-- Register Form -->
-  <div id="form-register" class="lf" style="display:none">
-    <input id="inp-reg-name" placeholder="Your name…" maxlength="64">
-    <input id="inp-reg-identifier" placeholder="Email or phone…" maxlength="80" autocomplete="username">
-    <input id="inp-reg-password" type="password" placeholder="Password (min 6 chars)…" maxlength="128" autocomplete="new-password">
-  </div>
-  <p class="lerr" id="lerr"></p>
-  <button class="ljoin" id="join-btn">Sign In →</button>
+
+  <div class="al-footer">© WaveChat 2025</div>
 </div>
+
+<!-- ══ RIGHT: WHITE FORM PANEL ══ -->
+<div class="al-right" id="al-right">
+
+  <!-- SIGN IN -->
+  <div class="af-panel" id="af-signin">
+    <h1 class="af-title">Sign in</h1>
+    <p class="af-sub">Welcome back. Enter your details.</p>
+
+    <div class="af-field">
+      <label class="af-label">Email or phone</label>
+      <input id="inp-identifier" class="af-inp" type="text" placeholder="you@example.com" maxlength="80" autocomplete="username">
+    </div>
+    <div class="af-field">
+      <label class="af-label">Password</label>
+      <div class="af-pw">
+        <input id="inp-password" class="af-inp" type="password" placeholder="••••••••" maxlength="128" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuth()">
+        <button class="af-eye" type="button" onclick="afTogglePw('inp-password',this)" tabindex="-1">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+    </div>
+    <p class="af-err" id="lerr"></p>
+    <button class="af-btn" id="join-btn" onclick="doAuth()">Sign in →</button>
+    <p class="af-switch">No account? <a href="#" onclick="switchAuthTab('register');return false">Create one</a></p>
+  </div>
+
+  <!-- SIGN UP -->
+  <div class="af-panel" id="af-signup" style="display:none">
+    <h1 class="af-title">Create account</h1>
+    <p class="af-sub">Free forever. No credit card needed.</p>
+
+    <div class="af-field">
+      <label class="af-label">Your name <span class="af-req">*</span></label>
+      <input id="inp-reg-name" class="af-inp" placeholder="Alex Smith" maxlength="64">
+    </div>
+    <div class="af-field">
+      <label class="af-label">Email or phone <span class="af-req">*</span></label>
+      <input id="inp-reg-identifier" class="af-inp" type="text" placeholder="you@example.com" maxlength="80" autocomplete="username">
+    </div>
+    <div class="af-field">
+      <label class="af-label">Password <span class="af-req">*</span></label>
+      <div class="af-pw">
+        <input id="inp-reg-password" class="af-inp" type="password" placeholder="Min 6 characters" maxlength="128" autocomplete="new-password" oninput="updatePwStrength(this.value)" onkeydown="if(event.key==='Enter')doRegister()">
+        <button class="af-eye" type="button" onclick="afTogglePw('inp-reg-password',this)" tabindex="-1">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <!-- Password strength bars -->
+      <div class="af-pw-strength" id="af-pw-strength">
+        <div class="af-ps-bar" id="ps1"></div>
+        <div class="af-ps-bar" id="ps2"></div>
+        <div class="af-ps-bar" id="ps3"></div>
+        <div class="af-ps-bar" id="ps4"></div>
+      </div>
+      <span class="af-hint" id="af-pw-hint">Must be at least 6 characters</span>
+    </div>
+    <p class="af-err" id="lerr-reg"></p>
+    <button class="af-btn" id="reg-btn" onclick="doRegister()">Get started →</button>
+    <p class="af-switch">Have an account? <a href="#" onclick="switchAuthTab('login');return false">Sign in</a></p>
+  </div>
+
 </div>
+</div><!-- end #login -->
 
 <!-- CALL -->
 <div id="call-ov">
@@ -1955,30 +2309,114 @@ let authMode = 'login';  // 'login' | 'register'
 function switchAuthTab(mode) {
   authMode = mode;
   const isReg = mode === 'register';
-  $('tab-login').classList.toggle('active', !isReg);
-  $('tab-register').classList.toggle('active', isReg);
-  $('form-login').style.display = isReg ? 'none' : 'block';
-  $('form-register').style.display = isReg ? 'block' : 'none';
-  $('join-btn').textContent = isReg ? 'Create Account →' : 'Sign In →';
-  $('lerr').textContent = '';
+  // new panels
+  const si = $('af-signin'), su = $('af-signup');
+  if(si){ si.style.display = isReg ? 'none' : 'block'; }
+  if(su){ su.style.display = isReg ? 'block' : 'none'; }
+  // clear errors
+  ['lerr','lerr-reg'].forEach(id=>{ const e=$(id); if(e) e.textContent=''; });
+  // animate panel in
+  const panel = isReg ? su : si;
+  if(panel){ panel.style.animation='none'; requestAnimationFrame(()=>{ panel.style.animation=''; }); }
 }
+
+function afTogglePw(id, btn) {
+  const el = $(id); if(!el) return;
+  el.type = el.type === 'password' ? 'text' : 'password';
+  btn.style.opacity = el.type === 'text' ? '1' : '0.45';
+}
+
+// Password strength indicator
+function updatePwStrength(val) {
+  const bars = [1,2,3,4].map(i=>$('ps'+i));
+  const hint = $('af-pw-hint');
+  if(!bars[0]) return;
+  let score = 0;
+  if(val.length >= 6) score++;
+  if(val.length >= 10) score++;
+  if(/[A-Z]/.test(val) && /[0-9]/.test(val)) score++;
+  if(/[^A-Za-z0-9]/.test(val)) score++;
+  const labels = ['Too short','Weak','Fair','Good','Strong!'];
+  const colors = ['','weak','fair','good','good'];
+  bars.forEach((b,i)=>{ b.className='af-ps-bar'+(i<score?' '+colors[score]:''); });
+  if(hint) hint.textContent = val.length===0 ? 'Must be at least 6 characters' : labels[score];
+}
+
+// Particle canvas — living background
+(function initParticles(){
+  const canvas = $('al-canvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let W,H,pts=[];
+
+  function resize(){
+    W = canvas.width  = canvas.offsetWidth;
+    H = canvas.height = canvas.offsetHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // Create particles
+  for(let i=0;i<55;i++){
+    pts.push({
+      x: Math.random()*W, y: Math.random()*H,
+      r: Math.random()*1.5+0.4,
+      vx:(Math.random()-.5)*0.3,
+      vy:(Math.random()-.5)*0.3,
+      a: Math.random()
+    });
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    // Draw connections
+    for(let i=0;i<pts.length;i++){
+      for(let j=i+1;j<pts.length;j++){
+        const dx=pts[i].x-pts[j].x, dy=pts[i].y-pts[j].y;
+        const dist=Math.sqrt(dx*dx+dy*dy);
+        if(dist<120){
+          ctx.beginPath();
+          ctx.strokeStyle=`rgba(255,255,255,${0.06*(1-dist/120)})`;
+          ctx.lineWidth=0.7;
+          ctx.moveTo(pts[i].x,pts[i].y);
+          ctx.lineTo(pts[j].x,pts[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+    // Draw dots
+    pts.forEach(p=>{
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(255,255,255,${0.25*p.a})`;
+      ctx.fill();
+      // Move
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0||p.x>W) p.vx*=-1;
+      if(p.y<0||p.y>H) p.vy*=-1;
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
 
 $('join-btn').onclick = doAuth;
 // Enter key on any field
-['inp-identifier','inp-password','inp-reg-name','inp-reg-identifier','inp-reg-password'].forEach(id=>{
+['inp-identifier','inp-password'].forEach(id=>{
   const el=$(id);if(el)el.onkeydown=e=>{if(e.key==='Enter')doAuth()};
+});
+['inp-reg-name','inp-reg-identifier','inp-reg-password'].forEach(id=>{
+  const el=$(id);if(el)el.onkeydown=e=>{if(e.key==='Enter')doRegister()};
 });
 
 async function doAuth() {
-  $('lerr').textContent = '';
-  $('join-btn').disabled = true;
-  try {
-    if (authMode === 'login') await doLogin();
-    else await doRegister();
-  } catch(e) {
-    $('lerr').textContent = e.message || 'Something went wrong';
+  const errEl = $('lerr'); if(errEl) errEl.textContent = '';
+  const btn = $('join-btn'); if(btn){btn.disabled=true;btn.textContent='Signing in…';}
+  try { await doLogin(); }
+  catch(e) {
+    const el=$('lerr'); if(el) el.textContent = e.message||'Something went wrong';
+    if(btn){btn.disabled=false;btn.textContent='Sign in →';}
   }
-  $('join-btn').disabled = false;
 }
 
 async function doLogin() {
@@ -2004,27 +2442,32 @@ async function doLogin() {
 }
 
 async function doRegister() {
-  const name       = ($('inp-reg-name').value       || '').trim();
-  const identifier = ($('inp-reg-identifier').value  || '').trim();
-  const password   = ($('inp-reg-password').value    || '');
-  if (!name)       throw new Error('Enter your name');
-  if (!identifier) throw new Error('Enter your email or phone');
-  if (password.length < 6) throw new Error('Password must be at least 6 characters');
-
-  const res = await fetch('/api/register', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({identifier, name, password})
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data || 'Registration failed');
-
-  authToken = data.token;
-  myName    = data.user.name;
-  myAvatar  = null;
-  myBio     = '';
-  try { localStorage.setItem('wc_token', authToken) } catch(e) {}
-  connect();
+  const errEl = $('lerr-reg'); if(errEl) errEl.textContent = '';
+  const btn = $('reg-btn'); if(btn){btn.disabled=true;btn.textContent='Creating account…';}
+  try {
+    const name       = ($('inp-reg-name').value       || '').trim();
+    const identifier = ($('inp-reg-identifier').value  || '').trim();
+    const password   = ($('inp-reg-password').value    || '');
+    if (!name)       throw new Error('Enter your name');
+    if (!identifier) throw new Error('Enter your email or phone');
+    if (password.length < 6) throw new Error('Password must be at least 6 characters');
+    const res = await fetch('/api/register', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({identifier, name, password})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data || 'Registration failed');
+    authToken = data.token;
+    myName    = data.user.name;
+    myAvatar  = null;
+    myBio     = '';
+    try { localStorage.setItem('wc_token', authToken) } catch(e) {}
+    connect();
+  } catch(e) {
+    const el = $('lerr-reg'); if(el) el.textContent = e.message||'Something went wrong';
+    if(btn){btn.disabled=false;btn.textContent='Get started →';}
+  }
 }
 
 function connect(){
